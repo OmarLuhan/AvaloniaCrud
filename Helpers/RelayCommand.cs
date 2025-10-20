@@ -16,4 +16,5 @@ public class RelayCommand(Action execute, Func<bool>? canExecute = null):IComman
     }
 
     public event EventHandler? CanExecuteChanged;
+    
 }

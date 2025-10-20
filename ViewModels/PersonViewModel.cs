@@ -11,7 +11,7 @@ using Crud.Services;
 
 namespace Crud.ViewModels;
 
-public sealed class PersonViewModel:INotifyPropertyChanged
+public sealed class PersonViewModel : INotifyPropertyChanged
 {
     public event PropertyChangedEventHandler? PropertyChanged;
     private readonly IPersonService _service;
@@ -20,6 +20,7 @@ public sealed class PersonViewModel:INotifyPropertyChanged
     public AsyncRelayCommand UpdateCommand { get; }
     public AsyncRelayCommand DeleteCommand { get; }
     public ICommand CleanCommand { get; }
+    
     public PersonViewModel(IPersonService service)
     {
         _service = service;
@@ -32,17 +33,21 @@ public sealed class PersonViewModel:INotifyPropertyChanged
         _ = LoadPeople();
         CleanFields();
     }
+    
+    // Fields
     private string? _name;
     private DateTime _birthDate = DateTime.Now;
     private string? _gender;
     private bool _acceptTerms;
+    private Person? _personSelected;
+    
+    // Properties
     public string? Name
     {
         get => _name;
         set
         {
-            _name = value;
-            OnPropertyChanged();
+            if (!SetField(ref _name, value)) return;
             AddCommand.RaiseCanExecuteChanged();
             UpdateCommand.RaiseCanExecuteChanged();
         }
@@ -53,11 +58,13 @@ public sealed class PersonViewModel:INotifyPropertyChanged
         get => _birthDate;
         set
         {
-            _birthDate = value;
-            OnPropertyChanged();
-            OnPropertyChanged(nameof(BirthDateOffset)); 
+            if (SetField(ref _birthDate, value))
+            {
+                OnPropertyChanged(nameof(BirthDateOffset)); 
+            }
         }
     }
+    
     public DateTimeOffset? BirthDateOffset
     {
         get => _birthDate;
@@ -69,44 +76,36 @@ public sealed class PersonViewModel:INotifyPropertyChanged
             }
         }
     }
+    
     public string? Gender
     {
         get => _gender;
         set
         {
-            _gender = value;
-            OnPropertyChanged();
+            if (!SetField(ref _gender, value)) return;
             AddCommand.RaiseCanExecuteChanged();
             UpdateCommand.RaiseCanExecuteChanged();
-           
-        }
-    }
-    public bool AcceptTerms
-    {
-        get => _acceptTerms;
-        set
-        {
-            _acceptTerms = value;
-            OnPropertyChanged();
-            
         }
     }
     
-    private Person? _personSelected;
+    public bool AcceptTerms
+    {
+        get => _acceptTerms;
+        set => SetField(ref _acceptTerms, value);
+    }
     
     public Person? PersonSelected
     {
         get => _personSelected;
         set
         {
-            if (_personSelected == value) return;
-            _personSelected = value;
-            OnPropertyChanged();
+            if (!SetField(ref _personSelected, value)) return;
             UpdateCommand.RaiseCanExecuteChanged();
             DeleteCommand.RaiseCanExecuteChanged();
+                
             if (value != null)
             {
-                Name= value.Name;
+                Name = value.Name;
                 BirthDate = value.BirthDate;
                 Gender = value.Gender;
                 AcceptTerms = value.AcceptTerms;
@@ -118,10 +117,12 @@ public sealed class PersonViewModel:INotifyPropertyChanged
         }
     }
 
+    // Validation
     private bool Validate() =>
         !string.IsNullOrWhiteSpace(Name) &&
         !string.IsNullOrWhiteSpace(Gender);
 
+    // CRUD Operations
     private async Task Add()
     {
         if (!Validate()) return;
@@ -139,12 +140,12 @@ public sealed class PersonViewModel:INotifyPropertyChanged
         CleanFields();
     }
 
-    private async  Task Update()
+    private async Task Update()
     {
         if (PersonSelected == null || !Validate()) return;
         
         PersonSelected.Name = Name?.Trim();
-        PersonSelected.BirthDate= BirthDate;
+        PersonSelected.BirthDate = BirthDate;
         PersonSelected.Gender = Gender?.Trim();
         PersonSelected.AcceptTerms = AcceptTerms;
         
@@ -152,6 +153,15 @@ public sealed class PersonViewModel:INotifyPropertyChanged
         await LoadPeople();
         CleanFields();
     }
+    
+    private async Task Delete()
+    {
+        if (PersonSelected == null) return;
+        await _service.Delete(PersonSelected.Id);
+        await LoadPeople();
+        CleanFields();
+    }
+    
     private async Task LoadPeople()
     {
         People.Clear();
@@ -161,13 +171,6 @@ public sealed class PersonViewModel:INotifyPropertyChanged
         }
     }
 
-    private async Task Delete()
-    {
-        if (PersonSelected == null) return;
-        await _service.Delete(PersonSelected.Id);
-        await LoadPeople();
-        CleanFields();
-    }
     private void CleanFields()
     {
         Name = string.Empty;
@@ -177,10 +180,12 @@ public sealed class PersonViewModel:INotifyPropertyChanged
         PersonSelected = null;
     }
 
+    // INotifyPropertyChanged Helper Methods
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
     {
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
+    
     private bool SetField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
     {
         if (EqualityComparer<T>.Default.Equals(field, value)) return false;
