@@ -32,11 +32,11 @@ public sealed class PersonViewModel:INotifyPropertyChanged
         _ = LoadPeople();
         CleanFields();
     }
-    private string _name;
+    private string? _name;
     private DateTime _birthDate = DateTime.Now;
-    private string _gender;
+    private string? _gender;
     private bool _acceptTerms;
-    public string Name
+    public string? Name
     {
         get => _name;
         set
@@ -47,7 +47,8 @@ public sealed class PersonViewModel:INotifyPropertyChanged
             UpdateCommand.RaiseCanExecuteChanged();
         }
     }
-    public DateTime BirthDate
+
+    private DateTime BirthDate
     {
         get => _birthDate;
         set
@@ -68,7 +69,7 @@ public sealed class PersonViewModel:INotifyPropertyChanged
             }
         }
     }
-    public string Gender
+    public string? Gender
     {
         get => _gender;
         set
@@ -77,6 +78,7 @@ public sealed class PersonViewModel:INotifyPropertyChanged
             OnPropertyChanged();
             AddCommand.RaiseCanExecuteChanged();
             UpdateCommand.RaiseCanExecuteChanged();
+           
         }
     }
     public bool AcceptTerms
@@ -89,19 +91,19 @@ public sealed class PersonViewModel:INotifyPropertyChanged
             
         }
     }
+    
     private Person? _personSelected;
     
-
     public Person? PersonSelected
     {
         get => _personSelected;
         set
         {
-            UpdateCommand.RaiseCanExecuteChanged();
-            DeleteCommand.RaiseCanExecuteChanged();
             if (_personSelected == value) return;
             _personSelected = value;
             OnPropertyChanged();
+            UpdateCommand.RaiseCanExecuteChanged();
+            DeleteCommand.RaiseCanExecuteChanged();
             if (value != null)
             {
                 Name= value.Name;
@@ -119,14 +121,14 @@ public sealed class PersonViewModel:INotifyPropertyChanged
     private bool Validate() =>
         !string.IsNullOrWhiteSpace(Name) &&
         !string.IsNullOrWhiteSpace(Gender);
-    
-    public async Task Add()
+
+    private async Task Add()
     {
         if (!Validate()) return;
 
         var newPerson = new Person
         {
-            Name = Name.Trim(),
+            Name = Name?.Trim(),
             BirthDate = BirthDate,
             Gender = Gender,
             AcceptTerms = AcceptTerms,
@@ -136,13 +138,14 @@ public sealed class PersonViewModel:INotifyPropertyChanged
         await LoadPeople();
         CleanFields();
     }
-    public async  Task Update()
+
+    private async  Task Update()
     {
         if (PersonSelected == null || !Validate()) return;
         
-        PersonSelected.Name = Name.Trim();
+        PersonSelected.Name = Name?.Trim();
         PersonSelected.BirthDate= BirthDate;
-        PersonSelected.Gender = Gender.Trim();
+        PersonSelected.Gender = Gender?.Trim();
         PersonSelected.AcceptTerms = AcceptTerms;
         
         await _service.Update(PersonSelected);
@@ -158,10 +161,9 @@ public sealed class PersonViewModel:INotifyPropertyChanged
         }
     }
 
-    public async Task Delete()
+    private async Task Delete()
     {
         if (PersonSelected == null) return;
-        
         await _service.Delete(PersonSelected.Id);
         await LoadPeople();
         CleanFields();
@@ -178,12 +180,6 @@ public sealed class PersonViewModel:INotifyPropertyChanged
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
     {
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-    }
-    private void RaiseCommandsCanExecuteChanged()
-    {
-        AddCommand.RaiseCanExecuteChanged();
-        UpdateCommand.RaiseCanExecuteChanged();
-        DeleteCommand.RaiseCanExecuteChanged();
     }
     private bool SetField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
     {

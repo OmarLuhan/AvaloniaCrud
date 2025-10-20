@@ -7,11 +7,11 @@ public partial class Person
 {
     public int Id { get; set; }
 
-    public string Name { get; set; } = null!;
+    public string? Name { get; set; } = null!;
 
     public DateTime BirthDate { get; set; }
 
-    public string Gender { get; set; } = null!;
+    public string? Gender { get; set; } = null!;
 
     public bool AcceptTerms { get; set; }
 }
