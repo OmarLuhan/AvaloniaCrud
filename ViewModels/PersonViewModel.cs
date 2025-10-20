@@ -1,132 +1,54 @@
 using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.ComponentModel;
-using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
-using System.Windows.Input;
-using Crud.Helpers;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using Crud.Models;
 using Crud.Services;
 
 namespace Crud.ViewModels;
 
-public sealed class PersonViewModel : INotifyPropertyChanged
+public partial class PersonViewModel : ObservableObject
 {
-    public event PropertyChangedEventHandler? PropertyChanged;
     private readonly IPersonService _service;
-    public ObservableCollection<Person> People { get; } = [];
-    public AsyncRelayCommand AddCommand { get; }
-    public AsyncRelayCommand UpdateCommand { get; }
-    public AsyncRelayCommand DeleteCommand { get; }
-    public ICommand CleanCommand { get; }
     
+    public ObservableCollection<Person> People { get; } = [];
+    
+    //Las propiedades se generan automáticamente con [ObservableProperty]
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(AddCommand), nameof(UpdateCommand))]
+    private string? _name;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(BirthDateOffset))] 
+    private DateTime _birthDate = DateTime.Now;
+    public DateTimeOffset BirthDateOffset
+    {
+        get => BirthDate;
+        set => BirthDate = value.DateTime;
+    }
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(AddCommand), nameof(UpdateCommand))]
+    private string? _gender;
+
+    [ObservableProperty]
+    private bool _acceptTerms;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(UpdateCommand), nameof(DeleteCommand))]
+    private Person? _personSelected;
+
     public PersonViewModel(IPersonService service)
     {
         _service = service;
-        
-        AddCommand = new AsyncRelayCommand(Add, Validate);
-        UpdateCommand = new AsyncRelayCommand(Update, () => PersonSelected != null && Validate());
-        DeleteCommand = new AsyncRelayCommand(Delete, () => PersonSelected != null);
-        CleanCommand = new RelayCommand(CleanFields);
-        
         _ = LoadPeople();
-        CleanFields();
     }
     
-    // Fields
-    private string? _name;
-    private DateTime _birthDate = DateTime.Now;
-    private string? _gender;
-    private bool _acceptTerms;
-    private Person? _personSelected;
-    
-    // Properties
-    public string? Name
-    {
-        get => _name;
-        set
-        {
-            if (!SetField(ref _name, value)) return;
-            AddCommand.RaiseCanExecuteChanged();
-            UpdateCommand.RaiseCanExecuteChanged();
-        }
-    }
-
-    private DateTime BirthDate
-    {
-        get => _birthDate;
-        set
-        {
-            if (SetField(ref _birthDate, value))
-            {
-                OnPropertyChanged(nameof(BirthDateOffset)); 
-            }
-        }
-    }
-    
-    public DateTimeOffset? BirthDateOffset
-    {
-        get => _birthDate;
-        set
-        {
-            if (value.HasValue)
-            {
-                BirthDate = value.Value.DateTime;
-            }
-        }
-    }
-    
-    public string? Gender
-    {
-        get => _gender;
-        set
-        {
-            if (!SetField(ref _gender, value)) return;
-            AddCommand.RaiseCanExecuteChanged();
-            UpdateCommand.RaiseCanExecuteChanged();
-        }
-    }
-    
-    public bool AcceptTerms
-    {
-        get => _acceptTerms;
-        set => SetField(ref _acceptTerms, value);
-    }
-    
-    public Person? PersonSelected
-    {
-        get => _personSelected;
-        set
-        {
-            if (!SetField(ref _personSelected, value)) return;
-            UpdateCommand.RaiseCanExecuteChanged();
-            DeleteCommand.RaiseCanExecuteChanged();
-                
-            if (value != null)
-            {
-                Name = value.Name;
-                BirthDate = value.BirthDate;
-                Gender = value.Gender;
-                AcceptTerms = value.AcceptTerms;
-            }
-            else
-            {
-                CleanFields();
-            }
-        }
-    }
-
-    // Validation
-    private bool Validate() =>
-        !string.IsNullOrWhiteSpace(Name) &&
-        !string.IsNullOrWhiteSpace(Gender);
-
-    // CRUD Operations
+    // Los comandos se generan automáticamente con [RelayCommand]
+    [RelayCommand(CanExecute = nameof(Validate))]
     private async Task Add()
     {
-        if (!Validate()) return;
-
         var newPerson = new Person
         {
             Name = Name?.Trim(),
@@ -140,11 +62,10 @@ public sealed class PersonViewModel : INotifyPropertyChanged
         CleanFields();
     }
 
+    [RelayCommand(CanExecute = nameof(CanUpdate))]
     private async Task Update()
     {
-        if (PersonSelected == null || !Validate()) return;
-        
-        PersonSelected.Name = Name?.Trim();
+        PersonSelected!.Name = Name?.Trim();
         PersonSelected.BirthDate = BirthDate;
         PersonSelected.Gender = Gender?.Trim();
         PersonSelected.AcceptTerms = AcceptTerms;
@@ -153,24 +74,16 @@ public sealed class PersonViewModel : INotifyPropertyChanged
         await LoadPeople();
         CleanFields();
     }
-    
+
+    [RelayCommand(CanExecute = nameof(CanDelete))]
     private async Task Delete()
     {
-        if (PersonSelected == null) return;
-        await _service.Delete(PersonSelected.Id);
+        await _service.Delete(PersonSelected!.Id);
         await LoadPeople();
         CleanFields();
     }
-    
-    private async Task LoadPeople()
-    {
-        People.Clear();
-        foreach (var p in await _service.GetAll())
-        {
-            People.Add(p);
-        }
-    }
 
+    [RelayCommand]
     private void CleanFields()
     {
         Name = string.Empty;
@@ -180,17 +93,41 @@ public sealed class PersonViewModel : INotifyPropertyChanged
         PersonSelected = null;
     }
 
-    // INotifyPropertyChanged Helper Methods
-    private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+    private bool Validate() => 
+        !string.IsNullOrWhiteSpace(Name) && 
+        !string.IsNullOrWhiteSpace(Gender);
+
+    partial void OnPersonSelectedChanged(Person? oldValue, Person? newValue)
     {
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        if (newValue != null)
+        {
+            Name = newValue.Name;
+            BirthDate = newValue.BirthDate;
+            Gender = newValue.Gender;
+            AcceptTerms = newValue.AcceptTerms;
+        }
+        else
+        {
+            CleanFields();
+        }
     }
-    
-    private bool SetField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
+    private bool CanUpdate() => PersonSelected != null && Validate();
+    private bool CanDelete() => PersonSelected != null;
+
+    private async Task LoadPeople()
     {
-        if (EqualityComparer<T>.Default.Equals(field, value)) return false;
-        field = value;
-        OnPropertyChanged(propertyName);
-        return true;
+        try
+        {
+            var people = await _service.GetAll();
+            People.Clear();
+            foreach (var p in people)
+            {
+                People.Add(p);
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error loading people: {ex.Message}");
+        }
     }
 }

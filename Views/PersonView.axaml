@@ -36,7 +36,7 @@
                 <Button Content="Add" Width="130" Command="{Binding AddCommand}"></Button>
                 <Button Content="Update" Width="130" Command="{Binding UpdateCommand}"></Button>
                 <Button Content="Delete" Width="130" Command="{Binding DeleteCommand}"></Button>
-                <Button Content="Clean" Width="130" Command="{Binding CleanCommand}"></Button>
+                <Button Content="Clean" Width="130" Command="{Binding CleanFieldsCommand}"></Button>
             </StackPanel>
             <TextBlock Text="List of people:" FontWeight="Bold" Margin="0, 10, 0, 0" FontSize="18"></TextBlock>
             
