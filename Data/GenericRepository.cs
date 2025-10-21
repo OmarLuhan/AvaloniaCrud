@@ -26,6 +26,7 @@ public class GenericRepository<T>(CrudDbContext context) : IGenericRepository<T>
     {
        _dbSet.Update(entity);
        await context.SaveChangesAsync();
+       context.Entry(entity).State = EntityState.Detached;
        return true;
     }
 

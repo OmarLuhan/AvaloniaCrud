@@ -22,14 +22,7 @@ public class PersonService(IGenericRepository<Person> repository):IPersonService
 
     public async Task<bool> Update(Person person)
     {
-        var currentPerson = await repository.Get()
-            .FirstOrDefaultAsync(p => p.Id == person.Id);
-        if (currentPerson == null) return false;
-        currentPerson.Name = person.Name;
-        currentPerson.BirthDate = person.BirthDate;
-        currentPerson.Gender = person.Gender;
-        currentPerson.AcceptTerms=person.AcceptTerms;
-        var result=await repository.Update(currentPerson);
+        var result = await repository.Update(person);
         return result;
     }
 
